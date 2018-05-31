@@ -48,11 +48,18 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        photos = new ArrayList<>();
-
-        ensureLoggedIn();
-        pullAllPhotos();
-        setupRecyclerView();
+        //check log in status
+        accessToken = AccessToken.getCurrentAccessToken();
+        if(accessToken == null || accessToken.isExpired()) {
+            Log.i("login status: ", "not logged in, directing to log in activity");
+            startActivity(new Intent(getApplicationContext(), LoginActivity.class));
+        } else {
+            Log.i("login status: ", "logged in");
+            //array list is used because recylerview uses random access frequently
+            photos = new ArrayList<>();
+            setupRecyclerView();
+            pullAllPhotos();
+        }
 
     }
 
@@ -76,27 +83,24 @@ public class MainActivity extends AppCompatActivity {
                 Gson gson = new Gson();
                 Response response1 = gson.fromJson(object.toString(), Response.class);
                 for(Photo p: response1.photos.data) {
+                    //assumes the url at index 0 contains the best representable format of a photo
                     photos.add(new PhotoModel(p.picture, p.webp_images[0].source, p.name, p.album.name, p.created_time));
                 }
-                Log.i("test", photos.size() + "");
+                Log.i("Graph API call status", "completed");
                 populateRecyclerView();
             }
         });
         Bundle parameters = new Bundle();
+        //to overcome 15-photos limit
         parameters.putString("fields", "photos.limit(100){created_time,name,album,picture,webp_images}");
         request.setParameters(parameters);
         request.executeAsync();
     }
-
-    private void ensureLoggedIn() {
-        accessToken = AccessToken.getCurrentAccessToken();
-        if(accessToken == null || accessToken.isExpired()) {
-            Log.i("test", "attempting to start login activity");
-            startActivity(new Intent(getApplicationContext(), LoginActivity.class));
-        }
-    }
 }
 
+/**
+ * This class contains only the information for needed to display
+ */
 class PhotoModel {
     public String thumbnailLink;
     public String photoLink;
@@ -112,6 +116,10 @@ class PhotoModel {
         this.creationTime = creationTime;
     }
 }
+
+/**
+ * This class is created according to the JSON response format from Graph API
+ */
 class Album {
     public String name;
     public String id;
@@ -124,6 +132,9 @@ class Album {
     }
 }
 
+/**
+ * This class is created according to the JSON response format from Graph API
+ */
 class Image {
     public String height;
     public String source;
@@ -136,6 +147,9 @@ class Image {
     }
 }
 
+/**
+ * This class is created according to the JSON response format from Graph API
+ */
 class Photo {
     public String created_time;
     public String name;
@@ -152,6 +166,9 @@ class Photo {
     }
 }
 
+/**
+ * This class is created according to the JSON response format from Graph API
+ */
 class PhotoMeta {
     public Photo[] data;
     public Object paging;
@@ -162,6 +179,9 @@ class PhotoMeta {
     }
 }
 
+/**
+ * This class is created according to the JSON response format from Graph API
+ */
 class Response {
     public PhotoMeta photos;
     public String id;
@@ -172,7 +192,9 @@ class Response {
     }
 }
 
-
+/**
+ * Custom RecyclerView Adapter to drive photo cards
+ */
 class MyAdapter extends RecyclerView.Adapter<MyAdapter.PhotoViewHolder> {
     private ArrayList<PhotoModel> dataset;
 
