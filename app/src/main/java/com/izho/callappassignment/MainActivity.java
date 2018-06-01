@@ -174,7 +174,8 @@ public class MainActivity extends AppCompatActivity {
                         loading.setVisibility(View.GONE);
                     }
                 } catch (JSONException e) {
-                    e.printStackTrace();
+                    currAlbum++;
+                    loading.setVisibility(View.GONE);
                 }
             }
         };
