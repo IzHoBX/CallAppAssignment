@@ -1,11 +1,14 @@
 package com.izho.callappassignment;
 
 import android.content.Intent;
+import android.content.pm.PackageInfo;
+import android.content.pm.PackageManager;
 import android.support.annotation.NonNull;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
+import android.util.Base64;
 import android.util.JsonReader;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -31,6 +34,9 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.security.Signature;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
@@ -41,6 +47,7 @@ import static com.facebook.FacebookSdk.getApplicationContext;
 public class MainActivity extends AppCompatActivity {
     private AccessToken accessToken;
     private ArrayList<PhotoModel> photos;
+    private ArrayList<AlbumModel> albums;
     private RecyclerView list;
 
     @Override
@@ -58,9 +65,31 @@ public class MainActivity extends AppCompatActivity {
             //array list is used because recylerview uses random access frequently
             photos = new ArrayList<>();
             setupRecyclerView();
+            //pullAllAlbums();
             pullAllPhotos();
         }
 
+    }
+
+    private void pullAllAlbums() {
+        GraphRequest request = GraphRequest.newMeRequest(accessToken, new GraphRequest.GraphJSONObjectCallback() {
+            @Override
+            public void onCompleted(JSONObject object, GraphResponse response) {
+                Log.i("test", object.toString());
+                Gson gson = new Gson();
+                AlbumResponse response1 = gson.fromJson(object.toString(), AlbumResponse.class);
+                for(AlbumModel a: response1.albumMeta.data) {
+                    albums.add(a);
+                }
+                Log.i("Graph API call status", "completed");
+            }
+        });
+        Bundle parameters = new Bundle();
+        //to overcome 15-photos limit
+        parameters.putString("fields", "albums{name}");
+        parameters.putInt("limit", "albums{name}");
+        request.setParameters(parameters);
+        request.executeAsync();
     }
 
     private void populateRecyclerView() {
@@ -76,7 +105,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void pullAllPhotos() {
-        GraphRequest request = GraphRequest.newMeRequest(accessToken, new GraphRequest.GraphJSONObjectCallback() {
+        /*GraphRequest request = GraphRequest.newMeRequest(accessToken, new GraphRequest.GraphJSONObjectCallback() {
             @Override
             public void onCompleted(JSONObject object, GraphResponse response) {
                 Log.i("test", object.toString());
@@ -94,12 +123,12 @@ public class MainActivity extends AppCompatActivity {
         //to overcome 15-photos limit
         parameters.putString("fields", "photos.limit(100){created_time,name,album,picture,webp_images}");
         request.setParameters(parameters);
-        request.executeAsync();
+        request.executeAsync();*/
     }
 }
 
 /**
- * This class contains only the information for needed to display
+ * This class contains only the information for needed to display a photo
  */
 class PhotoModel {
     public String thumbnailLink;
@@ -118,77 +147,46 @@ class PhotoModel {
 }
 
 /**
- * This class is created according to the JSON response format from Graph API
+ * This class contains only the information needed to display and pulling photos
  */
-class Album {
-    public String name;
+class AlbumModel {
     public String id;
-    public String created_time;
-
-    public Album(String name, String id, String created_time) {
-        this.name = name;
-        this.id = id;
-        this.created_time = created_time;
-    }
-}
-
-/**
- * This class is created according to the JSON response format from Graph API
- */
-class Image {
-    public String height;
-    public String source;
-    public String width;
-
-    public Image(String height, String source, String width) {
-        this.height = height;
-        this.source = source;
-        this.width = width;
-    }
-}
-
-/**
- * This class is created according to the JSON response format from Graph API
- */
-class Photo {
-    public String created_time;
     public String name;
-    public Album album;
-    public String picture;
-    public Image[] webp_images;
 
-    public Photo(String created_time, String name, Album album, String picture, Image[] webp_images) {
-        this.created_time = created_time;
-        this.name = name;
-        this.album = album;
-        this.picture = picture;
-        this.webp_images = webp_images;
-    }
-}
-
-/**
- * This class is created according to the JSON response format from Graph API
- */
-class PhotoMeta {
-    public Photo[] data;
-    public Object paging;
-
-    public PhotoMeta(Photo[] data, Object paging) {
-        this.data = data;
-        this.paging = paging;
-    }
-}
-
-/**
- * This class is created according to the JSON response format from Graph API
- */
-class Response {
-    public PhotoMeta photos;
-    public String id;
-
-    public Response(PhotoMeta photos, String id) {
-        this.photos = photos;
+    public AlbumModel(String id, String name) {
         this.id = id;
+        this.name = name;
+    }
+}
+
+class AlbumResponse {
+    public String id;
+    public AlbumMeta albumMeta;
+
+    public class AlbumMeta {
+        public Paging paging;
+        public AlbumModel[] data;
+
+        public AlbumMeta(Paging paging, AlbumModel[] data) {
+            this.paging = paging;
+            this.data = data;
+        }
+    }
+
+    public AlbumResponse(String id, AlbumMeta albumMeta) {
+        this.id = id;
+        this.albumMeta = albumMeta;
+    }
+}
+
+class Paging {
+    //not important in this app
+    public Object cursors;
+    public String next;
+
+    public Paging(Object cursors, String next) {
+        this.cursors = cursors;
+        this.next = next;
     }
 }
 
