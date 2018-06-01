@@ -157,7 +157,7 @@ public class MainActivity extends AppCompatActivity {
                             name = "-";
                         }
                         adapter.addItem(new PhotoModel(((JSONObject) rawPhotosData.get(i)).get("picture").toString(),
-                                ((JSONObject) rawPhotosData.get(i)).getJSONArray("webp_images").get(0).toString(),
+                                ((JSONObject) rawPhotosData.get(i)).getJSONArray("webp_images").getJSONObject(0).get("source").toString(),
                                 name,
                                 albums.get(albumIndex).name,
                                 ((JSONObject) rawPhotosData.get(i)).get("created_time").toString()));
@@ -255,7 +255,7 @@ class MyAdapter extends RecyclerView.Adapter<MyAdapter.PhotoViewHolder> {
             @Override
             public void onClick(View v) {
                 Intent intent = new Intent(getApplicationContext(), ShowPhotoActivity.class);
-                intent.putExtra("url", dataset.get(position).photoLink);
+                intent.putExtra("url", dataset.get(v.getVerticalScrollbarPosition()).photoLink);
                 getApplicationContext().startActivity(intent);
             }
         });
