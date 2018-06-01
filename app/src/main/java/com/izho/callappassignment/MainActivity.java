@@ -20,6 +20,7 @@ import android.view.ViewGroup;
 import android.widget.Adapter;
 import android.widget.ImageView;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.bumptech.glide.Glide;
 import com.facebook.AccessToken;
@@ -70,7 +71,7 @@ public class MainActivity extends AppCompatActivity {
             startActivity(new Intent(getApplicationContext(), LoginActivity.class));
         } else {
             Log.i("login status: ", "logged in");
-            //array list is used because recylerview uses random access frequently
+            //array list is used because recyler view uses random access frequently
             photos = new ArrayList<>();
             albums = new ArrayList<>();
             loading = findViewById(R.id.loading);
@@ -106,7 +107,7 @@ public class MainActivity extends AppCompatActivity {
         };
 
         Bundle parameters = new Bundle();
-        //to overcome 15-photos limit
+        //assume the number of albums < limit of Graph API
         parameters.putString("fields", "albums{name}");
 
         new GraphRequest(accessToken, "me", parameters, HttpMethod.GET, graphCallback).executeAsync();
@@ -132,6 +133,7 @@ public class MainActivity extends AppCompatActivity {
         list.setOnScrollChangeListener(new View.OnScrollChangeListener() {
             @Override
             public void onScrollChange(View view, int i, int i1, int i2, int i3) {
+                //loads new photos if user reaches the bottom of list
                 if(!list.canScrollVertically(1))
                     populateRecyclerView();
             }
@@ -141,6 +143,9 @@ public class MainActivity extends AppCompatActivity {
         list.setAdapter(adapter);
     }
 
+    /**
+     * Pull all photos of an album. The index follows the position of the album in the albums array.
+     */
     private void pullAllPhotos(final int albumIndex) {
         GraphRequest.Callback graphCallback = new GraphRequest.Callback() {
             @Override
@@ -155,6 +160,7 @@ public class MainActivity extends AppCompatActivity {
                             if (name.length() > 30)
                                 name = name.substring(0, 30);
                         } catch (JSONException e) {
+                            //no name
                             name = "-";
                         }
                         adapter.addItem(new PhotoModel(((JSONObject) rawPhotosData.get(i)).get("picture").toString(),
@@ -172,16 +178,17 @@ public class MainActivity extends AppCompatActivity {
                         currAlbum++;
                         adapter.notifyItemInserted(oldNumPhotos);
                         loading.setVisibility(View.GONE);
+                        Toast.makeText(MainActivity.this, "Loaded new photos!", Toast.LENGTH_SHORT).show();
                     }
                 } catch (JSONException e) {
                     currAlbum++;
                     loading.setVisibility(View.GONE);
+                    Toast.makeText(MainActivity.this, "No more photos!", Toast.LENGTH_SHORT).show();
                 }
             }
         };
 
         Bundle parameters = new Bundle();
-        //to overcome 15-photos limit
         parameters.putString("fields", "photos{name,created_time,picture,webp_images}");
 
         new GraphRequest(accessToken, albums.get(albumIndex).id, parameters, HttpMethod.GET, graphCallback).executeAsync();
