@@ -10,12 +10,14 @@ import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
+import android.text.Layout;
 import android.util.Base64;
 import android.util.JsonReader;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Adapter;
 import android.widget.ImageView;
 import android.widget.TextView;
 
@@ -53,6 +55,8 @@ public class MainActivity extends AppCompatActivity {
     private ArrayList<AlbumModel> albums;
     int currAlbum = 0;
     private RecyclerView list;
+    private MyAdapter adapter;
+    private View loading;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -69,6 +73,7 @@ public class MainActivity extends AppCompatActivity {
             //array list is used because recylerview uses random access frequently
             photos = new ArrayList<>();
             albums = new ArrayList<>();
+            loading = findViewById(R.id.loading);
             setupRecyclerView();
             pullAllAlbums();
         }
@@ -109,6 +114,7 @@ public class MainActivity extends AppCompatActivity {
 
     private void populateRecyclerView() {
         //requires user to have at least 1 album
+        loading.setVisibility(View.VISIBLE);
         if(currAlbum < albums.size()) {
             pullAllPhotos(currAlbum);
         }
@@ -129,6 +135,9 @@ public class MainActivity extends AppCompatActivity {
                     populateRecyclerView();
             }
         });
+
+        adapter = new MyAdapter(photos);
+        list.setAdapter(adapter);
     }
 
     private void pullAllPhotos(final int albumIndex) {
@@ -137,9 +146,17 @@ public class MainActivity extends AppCompatActivity {
             public void onCompleted(GraphResponse response) {
                 try {
                     JSONArray rawPhotosData = response.getJSONObject().getJSONObject("photos").getJSONArray("data");
+                    int oldNumPhotos = photos.size();
                     for(int i=0; i<rawPhotosData.length();i++) {
-                        String name = "test";
-                        photos.add(new PhotoModel(((JSONObject) rawPhotosData.get(i)).get("picture").toString(),
+                        String name = "";
+                        try {
+                            name = ((JSONObject) rawPhotosData.get(i)).get("name").toString();
+                            if (name.length() > 30)
+                                name = name.substring(0, 30);
+                        } catch (JSONException e) {
+                            name = "-";
+                        }
+                        adapter.addItem(new PhotoModel(((JSONObject) rawPhotosData.get(i)).get("picture").toString(),
                                 ((JSONObject) rawPhotosData.get(i)).getJSONArray("webp_images").get(0).toString(),
                                 name,
                                 albums.get(albumIndex).name,
@@ -151,8 +168,9 @@ public class MainActivity extends AppCompatActivity {
                         nextRequest.setCallback(this);
                         nextRequest.executeAndWait();
                     } else {
-                        list.setAdapter(new MyAdapter(photos));
                         currAlbum++;
+                        adapter.notifyItemInserted(oldNumPhotos);
+                        loading.setVisibility(View.GONE);
                     }
                 } catch (JSONException e) {
                     e.printStackTrace();
@@ -255,5 +273,7 @@ class MyAdapter extends RecyclerView.Adapter<MyAdapter.PhotoViewHolder> {
         return dataset.size();
     }
 
-
+    public void addItem(PhotoModel newPhoto) {
+        dataset.add(newPhoto);
+    }
 }
