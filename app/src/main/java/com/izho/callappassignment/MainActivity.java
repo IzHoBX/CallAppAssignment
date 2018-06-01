@@ -111,8 +111,6 @@ public class MainActivity extends AppCompatActivity {
         //requires user to have at least 1 album
         if(currAlbum < albums.size()) {
             pullAllPhotos(currAlbum);
-            list.setAdapter(new MyAdapter(photos));
-            currAlbum++;
         }
     }
 
@@ -152,6 +150,9 @@ public class MainActivity extends AppCompatActivity {
                     if(nextRequest != null){
                         nextRequest.setCallback(this);
                         nextRequest.executeAndWait();
+                    } else {
+                        list.setAdapter(new MyAdapter(photos));
+                        currAlbum++;
                     }
                 } catch (JSONException e) {
                     e.printStackTrace();
