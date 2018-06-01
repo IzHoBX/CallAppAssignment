@@ -18,7 +18,7 @@ public class ShowPhotoActivity extends AppCompatActivity {
 
         Intent i = getIntent();
         ImageView photo = findViewById(R.id.photo);
-        
+
         Glide.with(getApplicationContext()).load(i.getStringExtra("url")).into(photo);
     }
 }

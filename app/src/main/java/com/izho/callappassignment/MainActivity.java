@@ -255,7 +255,7 @@ class MyAdapter extends RecyclerView.Adapter<MyAdapter.PhotoViewHolder> {
             @Override
             public void onClick(View v) {
                 Intent intent = new Intent(getApplicationContext(), ShowPhotoActivity.class);
-                intent.putExtra("url", dataset.get(v.getVerticalScrollbarPosition()).photoLink);
+                intent.putExtra("url", dataset.get(position).photoLink);
                 getApplicationContext().startActivity(intent);
             }
         });
