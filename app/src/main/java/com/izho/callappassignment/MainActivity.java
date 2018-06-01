@@ -3,7 +3,9 @@ package com.izho.callappassignment;
 import android.content.Intent;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
+import android.os.Build;
 import android.support.annotation.NonNull;
+import android.support.annotation.RequiresApi;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.support.v7.widget.LinearLayoutManager;
@@ -24,6 +26,7 @@ import com.facebook.FacebookCallback;
 import com.facebook.FacebookException;
 import com.facebook.GraphRequest;
 import com.facebook.GraphResponse;
+import com.facebook.HttpMethod;
 import com.facebook.login.LoginManager;
 import com.facebook.login.LoginResult;
 import com.facebook.login.widget.LoginButton;
@@ -48,6 +51,7 @@ public class MainActivity extends AppCompatActivity {
     private AccessToken accessToken;
     private ArrayList<PhotoModel> photos;
     private ArrayList<AlbumModel> albums;
+    int currAlbum = 0;
     private RecyclerView list;
 
     @Override
@@ -64,66 +68,102 @@ public class MainActivity extends AppCompatActivity {
             Log.i("login status: ", "logged in");
             //array list is used because recylerview uses random access frequently
             photos = new ArrayList<>();
+            albums = new ArrayList<>();
             setupRecyclerView();
-            //pullAllAlbums();
-            pullAllPhotos();
+            pullAllAlbums();
         }
 
     }
 
     private void pullAllAlbums() {
-        GraphRequest request = GraphRequest.newMeRequest(accessToken, new GraphRequest.GraphJSONObjectCallback() {
+        GraphRequest.Callback graphCallback = new GraphRequest.Callback() {
             @Override
-            public void onCompleted(JSONObject object, GraphResponse response) {
-                Log.i("test", object.toString());
-                Gson gson = new Gson();
-                AlbumResponse response1 = gson.fromJson(object.toString(), AlbumResponse.class);
-                for(AlbumModel a: response1.albumMeta.data) {
-                    albums.add(a);
+            public void onCompleted(GraphResponse response) {
+                try {
+                    JSONArray rawAlbumsData = response.getJSONObject().getJSONObject("albums").getJSONArray("data");
+                    for(int i=0; i<rawAlbumsData.length();i++) {
+                        albums.add(new AlbumModel(((JSONObject) rawAlbumsData.get(i)).get("id").toString(),
+                                ((JSONObject) rawAlbumsData.get(i)).get("name").toString()));
+
+                    }
+                    Log.i("totalAlbum: ", albums.size() + "");
+                    GraphRequest nextRequest = response.getRequestForPagedResults(GraphResponse.PagingDirection.NEXT);
+                    if(nextRequest != null){
+                        nextRequest.setCallback(this);
+                        nextRequest.executeAndWait();
+                    } else {
+                        populateRecyclerView();
+                    }
+                } catch (JSONException e) {
+                    e.printStackTrace();
                 }
-                Log.i("Graph API call status", "completed");
             }
-        });
+        };
+
         Bundle parameters = new Bundle();
         //to overcome 15-photos limit
         parameters.putString("fields", "albums{name}");
-        parameters.putInt("limit", "albums{name}");
-        request.setParameters(parameters);
-        request.executeAsync();
+
+        new GraphRequest(accessToken, "me", parameters, HttpMethod.GET, graphCallback).executeAsync();
     }
 
     private void populateRecyclerView() {
-        list.setAdapter(new MyAdapter(photos));
+        //requires user to have at least 1 album
+        if(currAlbum < albums.size()) {
+            pullAllPhotos(currAlbum);
+            list.setAdapter(new MyAdapter(photos));
+            currAlbum++;
+        }
     }
 
+    @RequiresApi(api = Build.VERSION_CODES.M)
     private void setupRecyclerView() {
         list = (RecyclerView) findViewById(R.id.list);
         RecyclerView.LayoutManager layoutManager = new LinearLayoutManager(this);
 
         list.setLayoutManager(layoutManager);
         list.hasFixedSize();
-    }
 
-    private void pullAllPhotos() {
-        /*GraphRequest request = GraphRequest.newMeRequest(accessToken, new GraphRequest.GraphJSONObjectCallback() {
+        list.setOnScrollChangeListener(new View.OnScrollChangeListener() {
             @Override
-            public void onCompleted(JSONObject object, GraphResponse response) {
-                Log.i("test", object.toString());
-                Gson gson = new Gson();
-                Response response1 = gson.fromJson(object.toString(), Response.class);
-                for(Photo p: response1.photos.data) {
-                    //assumes the url at index 0 contains the best representable format of a photo
-                    photos.add(new PhotoModel(p.picture, p.webp_images[0].source, p.name, p.album.name, p.created_time));
-                }
-                Log.i("Graph API call status", "completed");
-                populateRecyclerView();
+            public void onScrollChange(View view, int i, int i1, int i2, int i3) {
+                if(!list.canScrollVertically(1))
+                    populateRecyclerView();
             }
         });
+    }
+
+    private void pullAllPhotos(final int albumIndex) {
+        GraphRequest.Callback graphCallback = new GraphRequest.Callback() {
+            @Override
+            public void onCompleted(GraphResponse response) {
+                try {
+                    JSONArray rawPhotosData = response.getJSONObject().getJSONObject("photos").getJSONArray("data");
+                    for(int i=0; i<rawPhotosData.length();i++) {
+                        String name = "test";
+                        photos.add(new PhotoModel(((JSONObject) rawPhotosData.get(i)).get("picture").toString(),
+                                ((JSONObject) rawPhotosData.get(i)).getJSONArray("webp_images").get(0).toString(),
+                                name,
+                                albums.get(albumIndex).name,
+                                ((JSONObject) rawPhotosData.get(i)).get("created_time").toString()));
+                    }
+                    Log.i("totalPhotos: ", photos.size() + "");
+                    GraphRequest nextRequest = response.getRequestForPagedResults(GraphResponse.PagingDirection.NEXT);
+                    if(nextRequest != null){
+                        nextRequest.setCallback(this);
+                        nextRequest.executeAndWait();
+                    }
+                } catch (JSONException e) {
+                    e.printStackTrace();
+                }
+            }
+        };
+
         Bundle parameters = new Bundle();
         //to overcome 15-photos limit
-        parameters.putString("fields", "photos.limit(100){created_time,name,album,picture,webp_images}");
-        request.setParameters(parameters);
-        request.executeAsync();*/
+        parameters.putString("fields", "photos{name,created_time,picture,webp_images}");
+
+        new GraphRequest(accessToken, albums.get(albumIndex).id, parameters, HttpMethod.GET, graphCallback).executeAsync();
     }
 }
 
@@ -156,37 +196,6 @@ class AlbumModel {
     public AlbumModel(String id, String name) {
         this.id = id;
         this.name = name;
-    }
-}
-
-class AlbumResponse {
-    public String id;
-    public AlbumMeta albumMeta;
-
-    public class AlbumMeta {
-        public Paging paging;
-        public AlbumModel[] data;
-
-        public AlbumMeta(Paging paging, AlbumModel[] data) {
-            this.paging = paging;
-            this.data = data;
-        }
-    }
-
-    public AlbumResponse(String id, AlbumMeta albumMeta) {
-        this.id = id;
-        this.albumMeta = albumMeta;
-    }
-}
-
-class Paging {
-    //not important in this app
-    public Object cursors;
-    public String next;
-
-    public Paging(Object cursors, String next) {
-        this.cursors = cursors;
-        this.next = next;
     }
 }
 
