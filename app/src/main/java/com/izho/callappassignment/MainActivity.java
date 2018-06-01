@@ -114,9 +114,10 @@ public class MainActivity extends AppCompatActivity {
 
     private void populateRecyclerView() {
         //requires user to have at least 1 album
-        loading.setVisibility(View.VISIBLE);
         if(currAlbum < albums.size()) {
             pullAllPhotos(currAlbum);
+            loading.setVisibility(View.VISIBLE);
+            loading.bringToFront();
         }
     }
 
