@@ -149,16 +149,11 @@ public class MainActivity extends AppCompatActivity {
                                 ((JSONObject) rawPhotosData.get(i)).get("created_time").toString()));
                     }
                     Log.i("totalPhotos: ", adapter.getItemCount() + "");
-                    GraphRequest nextRequest = response.getRequestForPagedResults(GraphResponse.PagingDirection.NEXT);
-                    if(nextRequest != null){
-                        nextRequest.setCallback(this);
-                        nextRequest.executeAndWait();
-                    } else {
-                        currAlbum++;
-                        adapter.notifyItemInserted(oldNumPhotos);
-                        loading.setVisibility(View.GONE);
-                        Toast.makeText(MainActivity.this, "Loaded new photos!", Toast.LENGTH_SHORT).show();
-                    }
+                    fetchSubsequentResults(response, albumIndex);
+                    currAlbum++;
+                    adapter.notifyItemInserted(oldNumPhotos);
+                    loading.setVisibility(View.GONE);
+                    Toast.makeText(MainActivity.this, "Loaded new photos!", Toast.LENGTH_SHORT).show();
                 } catch (JSONException e) {
                     currAlbum++;
                     loading.setVisibility(View.GONE);
@@ -171,6 +166,51 @@ public class MainActivity extends AppCompatActivity {
         parameters.putString("fields", "photos{name,created_time,picture,webp_images}");
 
         new GraphRequest(accessToken, albums.get(albumIndex).id, parameters, HttpMethod.GET, graphCallback).executeAsync();
+    }
+
+    private void fetchSubsequentResults(GraphResponse response, final int albumIndex) {
+        final String nextUrl;
+        try {
+            nextUrl = ((JSONObject) response.getJSONObject().getJSONObject("photos")).getJSONObject("paging").get("next").toString().substring(31);
+            System.out.println(nextUrl);
+            GraphRequest.Callback callback = new GraphRequest.Callback() {
+                @Override
+                public void onCompleted(GraphResponse response) {
+                    try {
+                        JSONArray rawPhotosData = response.getJSONObject().getJSONArray("data");
+                        for(int i=0; i<rawPhotosData.length();i++) {
+                            String name = "";
+                            try {
+                                name = ((JSONObject) rawPhotosData.get(i)).get("name").toString();
+                                if (name.length() > 30)
+                                    name = name.substring(0, 30);
+                            } catch (JSONException e) {
+                                //no name
+                                name = "-";
+                            }
+                            //assume the link at webp_images[0] is always sufficient for displaying as large image
+                            adapter.addItem(new PhotoModel(((JSONObject) rawPhotosData.get(i)).get("picture").toString(),
+                                    ((JSONObject) rawPhotosData.get(i)).getJSONArray("webp_images").getJSONObject(0).get("source").toString(),
+                                    name,
+                                    albums.get(albumIndex).name,
+                                    ((JSONObject) rawPhotosData.get(i)).get("created_time").toString()));
+                        }
+                    } catch (JSONException e) {
+                        e.printStackTrace();
+                    }
+                    try {
+                        String nextNextUrl = response.getJSONObject().getJSONObject("paging").get("next").toString().substring(31);
+                        Log.i("Fetching from album: ", "found next in next");
+                        new GraphRequest(accessToken, nextNextUrl,null, HttpMethod.GET, this).executeAsync();
+                    } catch (JSONException e) {
+                        Log.i("Fetching from album: ", "no more photos from this album");
+                    }
+                }
+            };
+            new GraphRequest(accessToken, nextUrl,null, HttpMethod.GET, callback).executeAsync();
+        } catch (JSONException e) {
+            Log.i("Fetching from album: ", "no more next photos from this album");
+        }
     }
 }
 
@@ -240,7 +280,6 @@ class MyAdapter extends RecyclerView.Adapter<MyAdapter.PhotoViewHolder> {
         holder.albumTitle.setText("Album: " + dataset.get(position).albumTitle);
         holder.creationTime.setText("Time created: " + dataset.get(position).creationTime);
         Glide.with(getApplicationContext()).load(dataset.get(position).thumbnailLink).into(holder.thumbnail);
-        Log.i("test", "onbindviewHolder");
 
         holder.itemView.setOnClickListener(new View.OnClickListener() {
             @Override
