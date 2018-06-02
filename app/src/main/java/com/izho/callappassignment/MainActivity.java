@@ -135,8 +135,9 @@ public class MainActivity extends AppCompatActivity {
                         String name = "";
                         try {
                             name = ((JSONObject) rawPhotosData.get(i)).get("name").toString();
+                            //prevent overly lengthy captions from flooding the ui
                             if (name.length() > 30)
-                                name = name.substring(0, 30);
+                                name = name.substring(0, 30) + " [more]";
                         } catch (JSONException e) {
                             //no name
                             name = "-";
@@ -171,6 +172,7 @@ public class MainActivity extends AppCompatActivity {
     private void fetchSubsequentResults(GraphResponse response, final int albumIndex) {
         final String nextUrl;
         try {
+            //omit first 31 characters that are headers
             nextUrl = ((JSONObject) response.getJSONObject().getJSONObject("photos")).getJSONObject("paging").get("next").toString().substring(31);
             System.out.println(nextUrl);
             GraphRequest.Callback callback = new GraphRequest.Callback() {
@@ -199,6 +201,7 @@ public class MainActivity extends AppCompatActivity {
                         e.printStackTrace();
                     }
                     try {
+                        //omit first 31 characters that are headers
                         String nextNextUrl = response.getJSONObject().getJSONObject("paging").get("next").toString().substring(31);
                         Log.i("Fetching from album: ", "found next in next");
                         new GraphRequest(accessToken, nextNextUrl,null, HttpMethod.GET, this).executeAsync();
