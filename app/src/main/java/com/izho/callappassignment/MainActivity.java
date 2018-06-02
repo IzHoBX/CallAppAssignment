@@ -153,7 +153,7 @@ public class MainActivity extends AppCompatActivity {
     private void fetchSubsequentResults(GraphResponse response, final int albumIndex) {
         final String nextUrl;
         try {
-            //omit first 31 characters that are headers
+            //omit first 31 characters that are headers: "https://graph.facebook.com/v3.0"
             nextUrl = ((JSONObject) response.getJSONObject().getJSONObject("photos")).getJSONObject("paging").get("next").toString().substring(31);
             System.out.println(nextUrl);
             GraphRequest.Callback callback = new GraphRequest.Callback() {
@@ -165,7 +165,7 @@ public class MainActivity extends AppCompatActivity {
                         Log.i("Error: ", "Couldn't find data[] in subsequent responses");
                     }
                     try {
-                        //omit first 31 characters that are headers
+                        //omit first 31 characters that are headers: "https://graph.facebook.com/v3.0"
                         String nextNextUrl = response.getJSONObject().getJSONObject("paging").get("next").toString().substring(31);
                         Log.i("Fetching from album: ", "found next in next");
                         new GraphRequest(accessToken, nextNextUrl,null, HttpMethod.GET, this).executeAsync();
