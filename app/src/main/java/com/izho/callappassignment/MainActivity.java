@@ -131,35 +131,16 @@ public class MainActivity extends AppCompatActivity {
                 try {
                     JSONArray rawPhotosData = response.getJSONObject().getJSONObject("photos").getJSONArray("data");
                     int oldNumPhotos = adapter.getItemCount();
-                    for(int i=0; i<rawPhotosData.length();i++) {
-                        String name = "";
-                        try {
-                            name = ((JSONObject) rawPhotosData.get(i)).get("name").toString();
-                            //prevent overly lengthy captions from flooding the ui
-                            if (name.length() > 30)
-                                name = name.substring(0, 30) + " [more]";
-                        } catch (JSONException e) {
-                            //no name
-                            name = "-";
-                        }
-                        //assume the link at webp_images[0] is always sufficient for displaying as large image
-                        adapter.addItem(new PhotoModel(((JSONObject) rawPhotosData.get(i)).get("picture").toString(),
-                                ((JSONObject) rawPhotosData.get(i)).getJSONArray("webp_images").getJSONObject(0).get("source").toString(),
-                                name,
-                                albums.get(albumIndex).name,
-                                ((JSONObject) rawPhotosData.get(i)).get("created_time").toString()));
-                    }
-                    Log.i("totalPhotos: ", adapter.getItemCount() + "");
+                    fromJSONArrayToAdapter(rawPhotosData, albumIndex);
                     fetchSubsequentResults(response, albumIndex);
                     currAlbum++;
                     adapter.notifyItemInserted(oldNumPhotos);
-                    loading.setVisibility(View.GONE);
                     Toast.makeText(MainActivity.this, "Loaded new photos!", Toast.LENGTH_SHORT).show();
                 } catch (JSONException e) {
                     currAlbum++;
-                    loading.setVisibility(View.GONE);
                     Toast.makeText(MainActivity.this, "No more photos!", Toast.LENGTH_SHORT).show();
                 }
+                loading.setVisibility(View.GONE);
             }
         };
 
@@ -179,26 +160,9 @@ public class MainActivity extends AppCompatActivity {
                 @Override
                 public void onCompleted(GraphResponse response) {
                     try {
-                        JSONArray rawPhotosData = response.getJSONObject().getJSONArray("data");
-                        for(int i=0; i<rawPhotosData.length();i++) {
-                            String name = "";
-                            try {
-                                name = ((JSONObject) rawPhotosData.get(i)).get("name").toString();
-                                if (name.length() > 30)
-                                    name = name.substring(0, 30);
-                            } catch (JSONException e) {
-                                //no name
-                                name = "-";
-                            }
-                            //assume the link at webp_images[0] is always sufficient for displaying as large image
-                            adapter.addItem(new PhotoModel(((JSONObject) rawPhotosData.get(i)).get("picture").toString(),
-                                    ((JSONObject) rawPhotosData.get(i)).getJSONArray("webp_images").getJSONObject(0).get("source").toString(),
-                                    name,
-                                    albums.get(albumIndex).name,
-                                    ((JSONObject) rawPhotosData.get(i)).get("created_time").toString()));
-                        }
+                        fromJSONArrayToAdapter(response.getJSONObject().getJSONArray("data"), albumIndex);
                     } catch (JSONException e) {
-                        e.printStackTrace();
+                        Log.i("Error: ", "Couldn't find data[] in subsequent responses");
                     }
                     try {
                         //omit first 31 characters that are headers
@@ -213,6 +177,31 @@ public class MainActivity extends AppCompatActivity {
             new GraphRequest(accessToken, nextUrl,null, HttpMethod.GET, callback).executeAsync();
         } catch (JSONException e) {
             Log.i("Fetching from album: ", "no more next photos from this album");
+        }
+    }
+
+    private void fromJSONArrayToAdapter(JSONArray rawPhotosData, int albumIndex) {
+        try {
+            for (int i = 0; i < rawPhotosData.length(); i++) {
+                String name = "";
+                try {
+                    name = ((JSONObject) rawPhotosData.get(i)).get("name").toString();
+                    if (name.length() > 30)
+                        name = name.substring(0, 30);
+                } catch (JSONException e) {
+                    //no name
+                    name = "-";
+                }
+                //assume the link at webp_images[0] is always sufficient for displaying as large image
+                adapter.addItem(new PhotoModel(((JSONObject) rawPhotosData.get(i)).get("picture").toString(),
+                        ((JSONObject) rawPhotosData.get(i)).getJSONArray("webp_images").getJSONObject(0).get("source").toString(),
+                        name,
+                        albums.get(albumIndex).name,
+                        ((JSONObject) rawPhotosData.get(i)).get("created_time").toString()));
+            }
+            Log.i("totalPhotos: ", adapter.getItemCount() + "");
+        } catch(JSONException e) {
+            Log.i("Error: ", "unexpected formatting of response in data[]");
         }
     }
 }
