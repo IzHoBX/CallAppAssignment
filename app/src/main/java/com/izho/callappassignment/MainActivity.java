@@ -52,7 +52,6 @@ import static com.facebook.FacebookSdk.getApplicationContext;
 
 public class MainActivity extends AppCompatActivity {
     private AccessToken accessToken;
-    private ArrayList<PhotoModel> photos;
     private ArrayList<AlbumModel> albums;
     int currAlbum = 0;
     private RecyclerView list;
@@ -72,7 +71,6 @@ public class MainActivity extends AppCompatActivity {
         } else {
             Log.i("login status: ", "logged in");
             //array list is used because recyler view uses random access frequently
-            photos = new ArrayList<>();
             albums = new ArrayList<>();
             loading = findViewById(R.id.loading);
             setupRecyclerView();
@@ -139,7 +137,7 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        adapter = new MyAdapter(photos);
+        adapter = new MyAdapter();
         list.setAdapter(adapter);
     }
 
@@ -152,7 +150,7 @@ public class MainActivity extends AppCompatActivity {
             public void onCompleted(GraphResponse response) {
                 try {
                     JSONArray rawPhotosData = response.getJSONObject().getJSONObject("photos").getJSONArray("data");
-                    int oldNumPhotos = photos.size();
+                    int oldNumPhotos = adapter.getItemCount();
                     for(int i=0; i<rawPhotosData.length();i++) {
                         String name = "";
                         try {
@@ -169,7 +167,7 @@ public class MainActivity extends AppCompatActivity {
                                 albums.get(albumIndex).name,
                                 ((JSONObject) rawPhotosData.get(i)).get("created_time").toString()));
                     }
-                    Log.i("totalPhotos: ", photos.size() + "");
+                    Log.i("totalPhotos: ", adapter.getItemCount() + "");
                     GraphRequest nextRequest = response.getRequestForPagedResults(GraphResponse.PagingDirection.NEXT);
                     if(nextRequest != null){
                         nextRequest.setCallback(this);
@@ -252,6 +250,9 @@ class MyAdapter extends RecyclerView.Adapter<MyAdapter.PhotoViewHolder> {
         this.dataset = dataset;
     }
 
+    public MyAdapter() {
+        this.dataset = new ArrayList<>();
+    }
     @Override
     public void onBindViewHolder(@NonNull PhotoViewHolder holder, final int position) {
         holder.title.setText("Title: " + dataset.get(position).title);
