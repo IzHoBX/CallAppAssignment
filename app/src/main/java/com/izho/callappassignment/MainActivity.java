@@ -187,7 +187,7 @@ public class MainActivity extends AppCompatActivity {
                 try {
                     name = ((JSONObject) rawPhotosData.get(i)).get("name").toString();
                     if (name.length() > 30)
-                        name = name.substring(0, 30);
+                        name = name.substring(0, 30) + " [...]";
                 } catch (JSONException e) {
                     //no name
                     name = "-";
