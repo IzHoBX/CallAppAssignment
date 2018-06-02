@@ -1,8 +1,6 @@
 package com.izho.callappassignment;
 
 import android.content.Intent;
-import android.content.pm.PackageInfo;
-import android.content.pm.PackageManager;
 import android.os.Build;
 import android.support.annotation.NonNull;
 import android.support.annotation.RequiresApi;
@@ -10,43 +8,25 @@ import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
-import android.text.Layout;
-import android.util.Base64;
-import android.util.JsonReader;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.Adapter;
 import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import com.bumptech.glide.Glide;
 import com.facebook.AccessToken;
-import com.facebook.CallbackManager;
-import com.facebook.FacebookCallback;
-import com.facebook.FacebookException;
 import com.facebook.GraphRequest;
 import com.facebook.GraphResponse;
 import com.facebook.HttpMethod;
-import com.facebook.login.LoginManager;
-import com.facebook.login.LoginResult;
-import com.facebook.login.widget.LoginButton;
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
 
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.security.Signature;
 import java.util.ArrayList;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.logging.Logger;
 
 import static com.facebook.FacebookSdk.getApplicationContext;
 
@@ -114,7 +94,7 @@ public class MainActivity extends AppCompatActivity {
     private void populateRecyclerView() {
         //requires user to have at least 1 album
         if(currAlbum < albums.size()) {
-            pullAllPhotos(currAlbum);
+            pullAllPhotosFromAlbum(currAlbum);
             loading.setVisibility(View.VISIBLE);
             loading.bringToFront();
         }
@@ -142,9 +122,9 @@ public class MainActivity extends AppCompatActivity {
     }
 
     /**
-     * Pull all photos of an album. The index follows the position of the album in the albums array.
+     * Pull all photos of an album indicated by the index in the albums arraylist.
      */
-    private void pullAllPhotos(final int albumIndex) {
+    private void pullAllPhotosFromAlbum(final int albumIndex) {
         GraphRequest.Callback graphCallback = new GraphRequest.Callback() {
             @Override
             public void onCompleted(GraphResponse response) {
@@ -161,6 +141,7 @@ public class MainActivity extends AppCompatActivity {
                             //no name
                             name = "-";
                         }
+                        //assume the link at webp_images[0] is always sufficient for displaying as large image
                         adapter.addItem(new PhotoModel(((JSONObject) rawPhotosData.get(i)).get("picture").toString(),
                                 ((JSONObject) rawPhotosData.get(i)).getJSONArray("webp_images").getJSONObject(0).get("source").toString(),
                                 name,
